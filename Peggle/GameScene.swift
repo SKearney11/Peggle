@@ -5,12 +5,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var scoreLabel: SKLabelNode!
     var editLabel: SKLabelNode!
     var RemainingBallsLabel: SKLabelNode!
+    var boxesHit = 0
+    var restartLabel: SKLabelNode!
     var ballsRemaining = 5{
         didSet{
             RemainingBallsLabel.text = "Balls: \(ballsRemaining)"
         }
     }
-    var boxesHit = 0
     
     let balls = [String](arrayLiteral: "ballBlue", "ballCyan", "ballGreen", "ballGrey", "ballPurple", "ballRed", "ballYellow")
     
@@ -56,11 +57,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.horizontalAlignmentMode = .right
         scoreLabel.position = CGPoint(x: 980, y: 700)
         addChild(scoreLabel)
-        
         editLabel = SKLabelNode(fontNamed: "Chalkduster")
         editLabel.text = "Edit"
         editLabel.position = CGPoint(x: 80, y: 700)
         addChild(editLabel)
+        startGame()
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -89,7 +90,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     box.physicsBody?.isDynamic = false
                     box.name = "box"
                     addChild(box)
-                    
                 } else {
                     let ballnum = RandomInt(min: 0, max: 6)
                     let image = balls[ballnum]
@@ -104,6 +104,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                         addChild(ball)
                         ballsRemaining -= 1
                     }
+                    for node in self.nodes(at: location)
+                    {
+                        if node.name == "restart"{
+                            startGame()
+                            node.removeFromParent()
+                            restartLabel.removeFromParent()
+                        }
+                    }
                 }
             }
         }
@@ -112,14 +120,16 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func collisionBetween(ball: SKNode, object: SKNode) {
         if object.name == "good" {
             destroy(ball: ball)
-            if boxesHit > 2{
-                boxesHit = 0
-                score += 1
-            }
+            score += boxesHit
             ballsRemaining += 1
+            boxesHit = 0
         } else if object.name == "bad" {
             destroy(ball: ball)
             score -= 1
+            boxesHit = 0
+            if ballsRemaining <= 0 && children.filter({$0.name=="ball"}).count == 0{
+                restartButton()
+            }
         } else if object.name == "box" {
             object.removeFromParent()
             boxesHit += 1
@@ -131,7 +141,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             fireParticles.position = ball.position
             addChild(fireParticles)
         }
-        
         ball.removeFromParent()
     }
     
@@ -174,5 +183,42 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         } else if contact.bodyB.node?.name == "ball" {
             collisionBetween(ball: contact.bodyB.node!, object: contact.bodyA.node!)
         }
+    }
+    
+    func startGame(){
+        score = 0
+        ballsRemaining = 5
+        generateBoxes()
+    }
+    
+    func restartButton(){
+        restartLabel = SKLabelNode(fontNamed: "Chalkduster")
+        restartLabel.text = "Restart"
+        restartLabel.horizontalAlignmentMode = .center
+        restartLabel.position = CGPoint(x: 500, y: 350)
+        let restartButton = SKSpriteNode(color: .blue, size: CGSize(width:250, height:100))
+        restartButton.position.x = 500
+        restartButton.position.y = 360
+        restartButton.physicsBody = SKPhysicsBody(rectangleOf: restartButton.size)
+        restartButton.physicsBody?.isDynamic = false
+        restartButton.name = "restart"
+        addChild(restartButton)
+        addChild(restartLabel)
+    }
+    
+    func generateBoxes(){
+        removeChildren(in: children.filter({$0.name=="box"}))
+        for _ in 0 ... 30{
+            let size = CGSize(width: GKRandomDistribution(lowestValue: 16, highestValue: 128).nextInt(), height: 16)
+            let box = SKSpriteNode(color: RandomColor(), size: size)
+            box.zRotation = RandomCGFloat(min: 0, max: 3)
+            box.position.x = RandomCGFloat(min: 0, max: Float(self.size.width))
+            box.position.y = RandomCGFloat(min: 80, max: 500)
+            box.physicsBody = SKPhysicsBody(rectangleOf: box.size)
+            box.physicsBody?.isDynamic = false
+            box.name = "box"
+            addChild(box)
+        }
+        
     }
 }
